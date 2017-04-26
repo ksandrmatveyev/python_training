@@ -43,7 +43,7 @@ def update_stack():
         exit(1)
     else:
         # update stack
-        updated_stack = client.create_stack(
+        updated_stack = client.update_stack(
             StackName=stackname,
             TemplateBody=read_template,
             Capabilities=[
