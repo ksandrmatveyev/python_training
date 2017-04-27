@@ -37,15 +37,24 @@ client = boto3.client('cloudformation')
 
 # try open and read a file
 def open_file(file_name):
-    """open and read file. Check if file exists"""
+    """opens, reads and validates a file. Checks if the file exists"""
     try:
         # open template file
         template_opened = open(file_name)
+
         # read template file
         read_template = template_opened.read()
+
+        # validate template file
+        validate_template = client.validate_template(
+            TemplateBody=read_template,
+        )
     except (OSError, IOError) as err:
-        print("Error: {}".format(err))
-        exit(1)  # or return 0
+        print("I/O Error: {}".format(err))
+        exit(1)
+    except (BotoCoreError, ClientError) as val_except:
+        print("Validate Error: {}".format(val_except))
+        exit(1)
     else:
         template_opened.close()
         return read_template
@@ -54,17 +63,9 @@ def open_file(file_name):
 # Create stack function
 def create_stack(args):
     """Creates aws cloudformation stack from file"""
+
     # get read template
     read_template = open_file(args.file)
-
-    # validate template
-    try:
-        validate_template = client.validate_template(
-            TemplateBody=read_template,
-        )
-    except (BotoCoreError, ClientError) as val_except:
-        print("Error: {}".format(val_except))
-        exit(1)
 
     # try create stack
     try:
@@ -92,18 +93,11 @@ def create_stack(args):
 def update_stack(args):
     """Creates aws cloudformation stack from file"""
 
+    # get read template
     read_template = open_file(args.file)
-    # validate template
-    try:
-        validate_template = client.validate_template(
-            TemplateBody=read_template,
-        )
-    except (BotoCoreError, ClientError) as val_except:
-        print("Error: {}".format(val_except))
-        exit(1)
 
+    # try update stack
     try:
-        # update stack
         updated_stack = client.update_stack(
             StackName=args.stack_name,
             TemplateBody=read_template,
@@ -127,8 +121,19 @@ def update_stack(args):
 # delete stack function
 def delete_stack(args):
     """Deletes aws cloudformation stack"""
+    # check if stack exists
     try:
-        # delete stack
+        stack_exists = client.describe_stacks(
+            StackName=args.stack_name
+        )
+    except (BotoCoreError, ClientError) as error:
+        print("Existing Error: {error_message}".format(error_message=error))
+        exit(1)
+    else:
+        print("Stack \"stack\" exists", stack=args.stack_name)
+
+    # try delete stack
+    try:
         deleted_stack = client.delete_stack(
             StackName=args.stack_name,
         )
