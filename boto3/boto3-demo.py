@@ -1,13 +1,22 @@
 #!/usr/bin/env python
-
+""" cloudformation example """
 import boto3
-ec2 = boto3.resource('ec2')
 
-instances = ec2.instances.filter(Filters=[{'Name': 'instance-state-name', 'Values': ['running']}])
+def main():
+    """ entry point """
+    file_name = "test.yaml"
+    stack_name = "TestStack"
+    # open the test file from the current directory
+    template = open(file_name).read()
+    # create the boto3 cloudformation client
+    cloudformation = boto3.client("cloudformation")
+    # create the new stack
+    cloudformation.create_stack(StackName=stack_name,
+                                TemplateBody=template)
+    # create the new waiter
+    waiter = cloudformation.get_waiter("stack_create_complete")
+    # wait until the stack state changes to "CREATE_COMPLETE"
+    waiter.wait(StackName=stack_name)
 
-ids = []
-for instance in instances:
-    print(instance.id, instance.instance_type)
-    ids.append(instance.id)
-
-ec2.instances.filter(InstanceIds=ids).stop()
+if __name__ == "__main__":
+    main()
