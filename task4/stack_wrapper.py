@@ -56,6 +56,7 @@ def open_file(file_name):
         print("Validate Error: {error_message}".format(error_message=error))
         exit(1)
     else:
+        print("Template \"{file}\" is valid".format(file=file_name))
         template_opened.close()
         return read_template
 
@@ -71,7 +72,22 @@ def stack_exists(stackname):
         print("Existing Error: {error_message}".format(error_message=error))
         exit(1)
     else:
-        print("Stack \"stack\" exists", stack=stackname)
+        print("Stack \"{stack}\" exists".format(stack=stackname))
+
+
+# create waiter function
+def set_waiter(stackname, waiter_type):
+    try:
+        # add waiter
+        waiter = client.get_waiter(waiter_type)
+
+        # wait until stack would be updated
+        waiter.wait(StackName=stackname)
+    except (WaiterError, WaiterConfigError) as error:
+        print("Waiter Error: {error_message}".format(error_message=error))
+        exit(1)
+    else:
+        print("Stack \"{stack}\" get status:  {status}".format(stack=stackname, status=waiter_type))
 
 
 # Create stack function
@@ -91,16 +107,13 @@ def create_stack(args):
                 'CAPABILITY_NAMED_IAM',
             ]
         )
-
-        # add waiter
-        waiter = client.get_waiter('stack_create_complete')
-
-        # wait until stack would be created
-        waiter.wait(StackName=args.stack_name)
         print(created_stack)
-    except (ClientError, BotoCoreError, WaiterError, WaiterConfigError) as error:
-        print("Create Error: {error_message}".format(error_message=error))
+    except (BotoCoreError, ClientError) as error:
+        print("Update Error: {error_message}".format(error_message=error))
         exit(1)
+
+    # set waiter
+    set_waiter(args.stack_name, 'stack_create_complete')
 
 
 # update stack function
@@ -120,16 +133,13 @@ def update_stack(args):
                 'CAPABILITY_NAMED_IAM',
             ]
         )
-
-        # add waiter
-        waiter = client.get_waiter('stack_update_complete')
-
-        # wait until stack would be updated
-        waiter.wait(StackName=args.stack_name)
         print(updated_stack)
-    except (BotoCoreError, ClientError, WaiterError, WaiterConfigError) as error:
+    except (BotoCoreError, ClientError) as error:
         print("Update Error: {error_message}".format(error_message=error))
         exit(1)
+
+    # set waiter
+    set_waiter(args.stack_name, 'stack_update_complete')
 
 
 # delete stack function
@@ -143,16 +153,12 @@ def delete_stack(args):
         deleted_stack = client.delete_stack(
             StackName=args.stack_name,
         )
-
-        # add waiter
-        waiter = client.get_waiter('stack_delete_complete')
-
-        # wait until stack would be created
-        waiter.wait(StackName=args.stack_name)
         print(deleted_stack)
-    except (BotoCoreError, ClientError, WaiterError, WaiterConfigError) as error:
+    except (BotoCoreError, ClientError) as error:
         print("Update Error: {error_message}".format(error_message=error))
         exit(1)
+    # set waiter
+    set_waiter(args.stack_name, 'stack_delete_complete')
 
 
 def main():
