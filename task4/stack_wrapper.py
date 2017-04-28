@@ -5,9 +5,7 @@ import argparse
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError, WaiterConfigError, WaiterError
 
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
-LOGGER = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 # Configuring argparse
@@ -20,19 +18,44 @@ def get_args():
     parser_create = subparsers.add_parser('create-stack', help='create new stack from file')
     parser_create.add_argument('stack_name', help='set stack name')
     parser_create.add_argument('file', help='set file path')
+    parser_create.add_argument('--log',
+                               type=str,
+                               default="INFO",
+                               required=False,
+                               help='which log level. DEBUG, INFO, WARNING, CRITICAL')
+    parser_create.add_argument('--logfile',
+                               required=False,
+                               default=None,
+                               help='write log to file')
     parser_create.set_defaults(func=create_stack)
 
     # Update stack parser
     parser_update = subparsers.add_parser('update-stack', help='update existing stack from file')
     parser_update.add_argument('stack_name', help='set stack name')
     parser_update.add_argument('file', help='set file path')
+    parser_update.add_argument('--log',
+                               type=str,
+                               default="INFO",
+                               required=False,
+                               help='which log level. DEBUG, INFO, WARNING, CRITICAL')
+    parser_update.add_argument('--logfile',
+                               required=False,
+                               default=None,
+                               help='write log to file')
     parser_update.set_defaults(func=update_stack)
 
     # Delete stack parser
     parser_delete = subparsers.add_parser('delete-stack', help='delete existing stack')
     parser_delete.add_argument('stack_name', help='set stack name')
-    parser.add_argument('--loglevel', type=str, default="INFO", help='which log level. DEBUG, INFO, ERROR')
-    parser.add_argument('--logfile', type=str, default="INFO", help='which log level. DEBUG, INFO, ERROR')
+    parser_delete.add_argument('--log',
+                               type=str,
+                               default="INFO",
+                               required=False,
+                               help='which log level. DEBUG, INFO, WARNING, CRITICAL')
+    parser_delete.add_argument('--logfile',
+                               required=False,
+                               default=None,
+                               help='write log to file')
     parser_delete.set_defaults(func=delete_stack)
 
     # if no arguments, show help
@@ -61,13 +84,16 @@ def open_file(file_name):
             TemplateBody=read_template,
         )
     except (OSError, IOError) as error:
-        print("I/O Error: {error_message}".format(error_message=error))
+        # print("I/O Error: {error_message}".format(error_message=error))
+        logger.error("I/O Error: {error_message}".format(error_message=error))
         exit(1)
     except (BotoCoreError, ClientError) as error:
-        print("Validate Error: {error_message}".format(error_message=error))
+        # print("Validate Error: {error_message}".format(error_message=error))
+        logger.error("Validate Error: {error_message}".format(error_message=error))
         exit(1)
     else:
-        print("Template \"{file}\" is valid".format(file=file_name))
+        # print("Template \"{file}\" is valid".format(file=file_name))
+        logger.info("Template \"{file}\" is valid".format(file=file_name))
         template_opened.close()
         return read_template
 
@@ -80,10 +106,12 @@ def stack_exists(stackname):
             StackName=stackname
         )
     except (BotoCoreError, ClientError) as error:
-        print("Existing Error: {error_message}".format(error_message=error))
+        # print("Existing Error: {error_message}".format(error_message=error))
+        logger.error("Existing Error: {error_message}".format(error_message=error))
         exit(1)
     else:
-        print("Stack \"{stack}\" exists".format(stack=stackname))
+        # print("Stack \"{stack}\" exists".format(stack=stackname))
+        logger.info("Stack \"{stack}\" exists".format(stack=stackname))
 
 
 # create waiter function
@@ -97,10 +125,12 @@ def set_waiter(stackname, waiter_type):
         # wait until stack would be updated
         waiter.wait(StackName=stackname)
     except (WaiterError, WaiterConfigError) as error:
-        print("Waiter Error: {error_message}".format(error_message=error))
+        # print("Waiter Error: {error_message}".format(error_message=error))
+        logger.error("Waiter Error: {error_message}".format(error_message=error))
         exit(1)
     else:
-        print("Stack \"{stack}\" get status:  {status}".format(stack=stackname, status=waiter_type))
+        # print("Stack \"{stack}\" get status:  {status}".format(stack=stackname, status=waiter_type))
+        logger.info("Stack \"{stack}\" get status:  {status}".format(stack=stackname, status=waiter_type))
 
 
 # Create stack function
@@ -120,9 +150,11 @@ def create_stack(args):
                 'CAPABILITY_NAMED_IAM',
             ]
         )
-        print(created_stack)
+        # print(created_stack)
+        logger.debug("Create stack request: {request}".format(request=created_stack))
     except (BotoCoreError, ClientError) as error:
-        print("Update Error: {error_message}".format(error_message=error))
+        # print("Update Error: {error_message}".format(error_message=error))
+        logger.error("Update Error: {error_message}".format(error_message=error))
         exit(1)
 
     # set waiter
@@ -146,9 +178,11 @@ def update_stack(args):
                 'CAPABILITY_NAMED_IAM',
             ]
         )
-        print(updated_stack)
+        # print(updated_stack)
+        logger.debug("Update stack request: {request}".format(request=updated_stack))
     except (BotoCoreError, ClientError) as error:
-        print("Update Error: {error_message}".format(error_message=error))
+        # print("Update Error: {error_message}".format(error_message=error))
+        logger.error("Update Error: {error_message}".format(error_message=error))
         exit(1)
 
     # set waiter
@@ -166,20 +200,38 @@ def delete_stack(args):
         deleted_stack = client.delete_stack(
             StackName=args.stack_name,
         )
-        print(deleted_stack)
+        # print(deleted_stack)
+        logger.debug("Delete stack request: {request}".format(request=deleted_stack))
     except (BotoCoreError, ClientError) as error:
-        print("Update Error: {error_message}".format(error_message=error))
+        # print("Update Error: {error_message}".format(error_message=error))
+        logger.error("Update Error: {error_message}".format(error_message=error))
         exit(1)
     # set waiter
     set_waiter(args.stack_name, 'stack_delete_complete')
 
 
+# set entry point
 def main():
     """ entry point """
     args = get_args()
+    # handle log parameter
+    loglevel = args.log
+    # for passing to logging config
+    numeric_level = getattr(logging, loglevel.upper(), None)
+    # check any user input value of log parameter
+    if not isinstance(numeric_level, int):
+        raise ValueError('Invalid log level: %s' % loglevel)
+    # write log to file
+    if args.logfile:
+        logging.basicConfig(filename=args.logfile,
+                            level=numeric_level,
+                            format='%(asctime)s | %(levelname)-10s %(message)s',
+                            datefmt='%m/%d/%Y %I:%M:%S %p')
+    else:
+        logging.basicConfig(level=numeric_level,
+                            format='%(asctime)s | %(levelname)-10s %(message)s',
+                            datefmt='%m/%d/%Y %I:%M:%S %p')
     args.func(args)
-    logging.basicConfig(format=LOG_FORMAT)
-    logging.setlevel = args.loglevel
 
 
 if __name__ == '__main__':
