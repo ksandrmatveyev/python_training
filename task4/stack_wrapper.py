@@ -84,15 +84,12 @@ def open_file(file_name):
             TemplateBody=read_template,
         )
     except (OSError, IOError) as error:
-        # print("I/O Error: {error_message}".format(error_message=error))
         logger.error("I/O Error: {error_message}".format(error_message=error))
         exit(1)
     except (BotoCoreError, ClientError) as error:
-        # print("Validate Error: {error_message}".format(error_message=error))
         logger.error("Validate Error: {error_message}".format(error_message=error))
         exit(1)
     else:
-        # print("Template \"{file}\" is valid".format(file=file_name))
         logger.info("Template \"{file}\" is valid".format(file=file_name))
         template_opened.close()
         return read_template
@@ -106,11 +103,9 @@ def stack_exists(stackname):
             StackName=stackname
         )
     except (BotoCoreError, ClientError) as error:
-        # print("Existing Error: {error_message}".format(error_message=error))
         logger.error("Existing Error: {error_message}".format(error_message=error))
         exit(1)
     else:
-        # print("Stack \"{stack}\" exists".format(stack=stackname))
         logger.info("Stack \"{stack}\" exists".format(stack=stackname))
 
 
@@ -125,11 +120,9 @@ def set_waiter(stackname, waiter_type):
         # wait until stack would be updated
         waiter.wait(StackName=stackname)
     except (WaiterError, WaiterConfigError) as error:
-        # print("Waiter Error: {error_message}".format(error_message=error))
         logger.error("Waiter Error: {error_message}".format(error_message=error))
         exit(1)
     else:
-        # print("Stack \"{stack}\" get status:  {status}".format(stack=stackname, status=waiter_type))
         logger.info("Stack \"{stack}\" get status:  {status}".format(stack=stackname, status=waiter_type))
 
 
@@ -150,10 +143,8 @@ def create_stack(args):
                 'CAPABILITY_NAMED_IAM',
             ]
         )
-        # print(created_stack)
         logger.debug("Create stack request: {request}".format(request=created_stack))
     except (BotoCoreError, ClientError) as error:
-        # print("Update Error: {error_message}".format(error_message=error))
         logger.error("Update Error: {error_message}".format(error_message=error))
         exit(1)
 
@@ -178,10 +169,8 @@ def update_stack(args):
                 'CAPABILITY_NAMED_IAM',
             ]
         )
-        # print(updated_stack)
         logger.debug("Update stack request: {request}".format(request=updated_stack))
     except (BotoCoreError, ClientError) as error:
-        # print("Update Error: {error_message}".format(error_message=error))
         logger.error("Update Error: {error_message}".format(error_message=error))
         exit(1)
 
@@ -200,10 +189,8 @@ def delete_stack(args):
         deleted_stack = client.delete_stack(
             StackName=args.stack_name,
         )
-        # print(deleted_stack)
         logger.debug("Delete stack request: {request}".format(request=deleted_stack))
     except (BotoCoreError, ClientError) as error:
-        # print("Update Error: {error_message}".format(error_message=error))
         logger.error("Update Error: {error_message}".format(error_message=error))
         exit(1)
     # set waiter
