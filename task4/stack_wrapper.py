@@ -1,8 +1,13 @@
 #! /usr/bin/env python
-from sys import exit
+from sys import exit, argv
+import logging
 import argparse
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError, WaiterConfigError, WaiterError
+
+LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(funcName) '
+              '-35s %(lineno) -5d: %(message)s')
+LOGGER = logging.getLogger(__name__)
 
 
 # Configuring argparse
@@ -26,8 +31,14 @@ def get_args():
     # Delete stack parser
     parser_delete = subparsers.add_parser('delete-stack', help='delete existing stack')
     parser_delete.add_argument('stack_name', help='set stack name')
+    parser.add_argument('--loglevel', type=str, default="INFO", help='which log level. DEBUG, INFO, ERROR')
+    parser.add_argument('--logfile', type=str, default="INFO", help='which log level. DEBUG, INFO, ERROR')
     parser_delete.set_defaults(func=delete_stack)
 
+    # if no arguments, show help
+    if len(argv) == 1:
+        parser.print_help()
+        exit(1)
     return parser.parse_args()
 
 
@@ -77,6 +88,8 @@ def stack_exists(stackname):
 
 # create waiter function
 def set_waiter(stackname, waiter_type):
+    """set waiter for boto3 operations"""
+
     try:
         # add waiter
         waiter = client.get_waiter(waiter_type)
@@ -165,6 +178,8 @@ def main():
     """ entry point """
     args = get_args()
     args.func(args)
+    logging.basicConfig(format=LOG_FORMAT)
+    logging.setlevel = args.loglevel
 
 
 if __name__ == '__main__':
