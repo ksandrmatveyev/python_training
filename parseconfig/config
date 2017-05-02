@@ -1,0 +1,7 @@
+staknames:
+  stack1: 'VPC'
+  stack2: 'SecurityGroup'
+  stack3: 'EC2'
+stackfiles:
+
+
