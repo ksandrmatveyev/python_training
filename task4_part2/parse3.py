@@ -17,9 +17,7 @@ list_of_dependencies = []
 
 
 def resolve_dependencies(config, bunch_name):
-    print('bunch_name', bunch_name)
     bunch = config[bunch_name]
-    print('bunch', bunch)
     try:
         required_bunch_name = bunch.get(KEY_REQUIRE)
 

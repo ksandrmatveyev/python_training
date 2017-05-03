@@ -6,38 +6,30 @@ VPC:
 Network1:
   name: NetworkStack
   template: NetworkStack.json
-  require:
-    - VPC
+  require: VPC
   parameters: ~
 Network2:
   name: NetworkStack
   template: NetworkStack.json
-  require:
-    - VPC
+  require: VPC
   parameters: ~
 Policy:
   name: NetworkStack
   template: NetworkStack.json
-  require:
-    - Network1
+  require: Network1
   parameters: ~
 SecurityGroup:
   name: NetworkStack
   template: NetworkStack.json
-  require:
-    - Network1
+  require: Network1
   parameters: ~
 IAM:
   name: NetworkStack
   template: NetworkStack.json
-  require:
-    - Policy
-    - Network2
+  require: Policy
   parameters: ~
 App1:
   name: WebAppStack
   template: WebAppStack.json
-  require:
-    - SecurityGroup
-    - IAM
+  require: IAM
   parameters: ~

@@ -13,34 +13,30 @@ def get_config(configpath):
         data = yaml.load(file_descriptor)
     return data
 
+list_of_dependencies = []
+
 
 def resolve_dependencies(config, bunch_name):
-    print('bunch_name', bunch_name)
     bunch = config[bunch_name]
-    print('bunch', bunch)
+    # print(bunch)
     try:
         required_bunch_name = bunch.get(KEY_REQUIRE)
-        list_of_dependencies = []
+        # print(required_bunch_name)
         if required_bunch_name:
+            list_of_dependencies.append(required_bunch_name)
+        else:
+
             list_of_dependencies.append(bunch_name)
-            for key in required_bunch_name:
-                list_of_dependencies.append(key)
-    except (AttributeError, KeyError, TypeError) as e:
-        # print('no dependencies for {bunch}'.format(bunch=bunch_name))
-        # pass
-        print(e)
-    return list_of_dependencies
+        required_bunch = resolve_dependencies(config, required_bunch_name)
+        # print(required_bunch)
+        required_bunch.extend(bunch[1:])
+        return required_bunch
+    except (AttributeError, KeyError, TypeError):
+        return bunch
 
-
-def reverse_dependencies(dependencies):
-    list_of_reversed_dependencies = []
-    for key in reversed(dependencies):
-        list_of_reversed_dependencies.append(key)
-    return list_of_reversed_dependencies
 
 if __name__ == "__main__":
     configfile = get_config(configpath)
     create_dependencies = resolve_dependencies(configfile, key_name)
+    print(str(list_of_dependencies))
     print(create_dependencies)
-    delete_dependencies = reverse_dependencies(create_dependencies)
-    print(delete_dependencies)

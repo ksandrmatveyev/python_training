@@ -64,4 +64,4 @@ if __name__ == "__main__":
     plain_config = resolve_dependencies(config, "web")
     print(plain_config)
     for item in plain_config:
-        print(get_stack_describe(item))
+        print(get_stack_describe+(item))

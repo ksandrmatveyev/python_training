@@ -6,8 +6,7 @@ VPC:
 Network1:
   name: NetworkStack1
   template: NetworkStack1.json
-  require:
-    - VPC
+  require: VPC
   parameters: ~
 Network2:
   name: NetworkStack2

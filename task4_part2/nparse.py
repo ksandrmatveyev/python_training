@@ -21,12 +21,12 @@ def resolve_dependencies(config, bunch_name):
     print(bunch)
     try:
         required_bunch_name = bunch[KEY_REQUIRE]
-        print(required_bunch_name)
+        #print(required_bunch_name)
         list2.append(required_bunch_name)
         required_bunch = resolve_dependencies(config, required_bunch_name)
-        print(required_bunch)
+        #print(required_bunch)
         required_bunch.extend(bunch[1:])
-        print(required_bunch)
+        #print(required_bunch)
         return required_bunch
     except (AttributeError, KeyError, TypeError):
         list1.append(bunch['name'])
