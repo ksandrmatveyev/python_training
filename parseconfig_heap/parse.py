@@ -3,8 +3,8 @@ import boto3
 import yaml
 from collections import namedtuple
 
-configpath = 'test.yaml'
-key_name = 'App2'
+configpath = 'test2.yaml'
+key_name = 'App1'
 KEY_REQUIRE = "require"
 
 
@@ -21,7 +21,7 @@ def resolve_dependencies(config, bunch_name):
     # print(bunch)
     try:
         required_bunch_name = bunch.get(KEY_REQUIRE)
-        # print(required_bunch_name)
+        print(required_bunch_name)
         if required_bunch_name:
             list_of_dependencies.append(required_bunch_name)
         else:
