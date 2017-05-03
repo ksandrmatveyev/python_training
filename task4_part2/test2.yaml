@@ -1,19 +1,43 @@
-Network:
-    name: NetworkStack
-    template: NetworkStack.json
-    require: ~
-    parameters: ~
+VPC:
+  name: NetworkStack
+  template: NetworkStack.json
+  require: ~
+  parameters: ~
+Network1:
+  name: NetworkStack
+  template: NetworkStack.json
+  require:
+    - VPC
+  parameters: ~
+Network2:
+  name: NetworkStack
+  template: NetworkStack.json
+  require:
+    - VPC
+  parameters: ~
+Policy:
+  name: NetworkStack
+  template: NetworkStack.json
+  require:
+    - Network1
+  parameters: ~
+SecurityGroup:
+  name: NetworkStack
+  template: NetworkStack.json
+  require:
+    - Network1
+  parameters: ~
+IAM:
+  name: NetworkStack
+  template: NetworkStack.json
+  require:
+    - Policy
+    - Network2
+  parameters: ~
 App1:
-    name: WebAppStack
-    template: WebAppStack.json
-    require: Network
-    parameters:
-       NetworkStackName: NetworkStack
-       InstanceName: WebApp1222
-       SomeParameter: SomeValue
-#     - ParameterKey: NetworkStackName
-#       ParameterValue: NetworkStack
-#     - ParameterKey: InstanceName
-#       ParameterValue: WebApp1
-#     - ParameterKey: SomeParameter
-#       ParameterValue: SomeValue
+  name: WebAppStack
+  template: WebAppStack.json
+  require:
+    - SecurityGroup
+    - IAM
+  parameters: ~

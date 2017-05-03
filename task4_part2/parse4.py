@@ -30,12 +30,12 @@ KEY_REQUIRE = "require"
 
 def resolve_dependencies(config, bunch_name):
     bunch = config[bunch_name]
-    # print(bunch)
+    print(bunch)
     try:
         required_bunch_name = bunch[0][KEY_REQUIRE]
-        # print(required_bunch_name)
+        print(required_bunch_name)
         required_bunch = resolve_dependencies(config, required_bunch_name)
-        # print(required_bunch)
+        print(required_bunch)
         required_bunch.extend(bunch[1:])
         return required_bunch
     except (AttributeError, KeyError, TypeError):
@@ -44,7 +44,6 @@ def resolve_dependencies(config, bunch_name):
 KEY_NAME = "name"
 KEY_PARAMETERS = "args"
 StackDescription = namedtuple("stack", ["name", "parameters", "file_name"])
-
 
 def get_stack_describe(item):
     try:
@@ -62,6 +61,5 @@ def get_stack_describe(item):
 if __name__ == "__main__":
     config = yaml.load(YAML_CONFIG)
     plain_config = resolve_dependencies(config, "web")
-    print(plain_config)
     for item in plain_config:
         print(get_stack_describe(item))

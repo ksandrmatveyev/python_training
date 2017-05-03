@@ -1,0 +1,36 @@
+VPC:
+  name: VPC
+  template: VPC.json
+  require: ~
+  parameters: ~
+Network1:
+  name: NetworkStack1
+  template: NetworkStack1.json
+  require:
+    - VPC
+  parameters: ~
+Network2:
+  name: NetworkStack2
+  template: NetworkStack2.json
+  require: VPC
+  parameters: ~
+Policy:
+  name: Policy
+  template: Policy.json
+  require: Network1
+  parameters: ~
+SecurityGroup:
+  name: SecurityGroup
+  template: SecurityGroup.json
+  require: Network1
+  parameters: ~
+IAM:
+  name: IAM
+  template: IAM.json
+  require: Network2
+  parameters: ~
+App1:
+  name: WebAppStack
+  template: WebAppStack.json
+  require: IAM
+  parameters: ~
