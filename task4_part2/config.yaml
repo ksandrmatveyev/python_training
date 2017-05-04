@@ -10,5 +10,5 @@ WebAppStack:
   require: NetworkStack
   parameters:
      NetworkStackName: NetworkStack
-     InstanceName: WebApp1
+     InstanceName: WebApp
      SomeParameter: SomeValue

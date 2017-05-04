@@ -41,7 +41,6 @@ def get_args():
     # Create stack parser
     parser_create = subparsers.add_parser('create-stack', help='create new stack from file')
     parser_create.add_argument('stack_name', help='set stack name')
-    parser_create.add_argument('file', help='set template file path')
     parser_create.add_argument('--config',
                                required=False,
                                default='config.yaml',
@@ -61,7 +60,6 @@ def get_args():
     # Update stack parser
     parser_update = subparsers.add_parser('update-stack', help='update existing stack from file')
     parser_update.add_argument('stack_name', help='set stack name')
-    parser_update.add_argument('file', help='set template file path')
     parser_update.add_argument('--config',
                                required=False,
                                default='config.yaml',
@@ -103,12 +101,12 @@ def get_args():
     return parser.parse_args()
 
 
-def open_file(file_name):
+def open_file(file_path):
     """try to open and read cloudformation template file"""
 
     try:
         # open template file
-        template_opened = open(file_name)
+        template_opened = open(file_path)
         # read template file
         read_template = template_opened.read()
 
@@ -116,28 +114,28 @@ def open_file(file_name):
         logger.error("I/O Error: {error_message}".format(error_message=error))
         exit(1)
     else:
-        logger.info("Template \"{file}\" is valid".format(file=file_name))
+        logger.info("Template \"{file}\" is valid".format(file=file_path))
         template_opened.close()
         return read_template
 
 
-def validate_file(template_read):
+def validate_template(read_template):
     """validate cloudformation template file, which was read previously"""
 
     validate_template = client.validate_template(
-        TemplateBody=template_read,
+        TemplateBody=read_template,
     )
 
 
-def get_template_params(template_read):
+def get_template_params(read_template):
     """return parameters from template file, which was read previously.
     Parameters are being writed as key-value pairs into list
     """
 
-    template_valid = client.validate_template(
-        TemplateBody=template_read
+    valid_template = client.validate_template(
+        TemplateBody=read_template
     )
-    template_params = template_valid.get('Parameters')
+    template_params = valid_template.get('Parameters')
     list_of_parameters = []
     for oldkey in template_params:
         parameter = {
@@ -151,27 +149,27 @@ def get_template_params(template_read):
     return list_of_parameters
 
 
-def get_config(configpath):
+def get_config(config_path):
     """try return all data from yaml config file"""
 
     try:
-        with open(configpath, 'r') as file_descriptor:
-            data = yaml.load(file_descriptor)
+        with open(config_path, 'r') as file_descriptor:
+            read_config = yaml.load(file_descriptor)
     except (OSError, IOError, yaml.YAMLError) as error:
         logger.error("Config file Error: {error_message}".format(error_message=error))
         exit(1)
     else:
-        logger.info("Config file \"{file}\" is valid".format(file=configpath))
-        return data
+        logger.info("Config file \"{file}\" is valid".format(file=config_path))
+        return read_config
 
 
-def match_parameters(stack_key, template_read, config_path):
+def match_parameters(stack_key, template_read, read_config):
     """Matching parameters between template and config"""
 
     template_params = get_template_params(template_read)
-    data = get_config(config_path)
+    # data = get_config(config_path)
     parameters_key = 'parameters'
-    parameters_from_config = data.get(stack_key).get(parameters_key)
+    parameters_from_config = read_config.get(stack_key).get(parameters_key)
     resolved_parameters = []
     for item in template_params:
         print(item)
@@ -191,23 +189,23 @@ def match_parameters(stack_key, template_read, config_path):
     return resolved_parameters
 
 
-def stack_exists(stackname):
+def stack_exists(stack_name):
     """Check if stack exists"""
 
     stack_exists = client.describe_stacks(
-        StackName=stackname
+        StackName=stack_name
     )
-    logger.info("Stack \"{stack}\" exists".format(stack=stackname))
+    logger.info("Stack \"{stack}\" exists".format(stack=stack_name))
 
 
-def set_waiter(stackname, waiter_type):
+def set_waiter(stack_name, waiter_type):
     """set waiter for boto3 operations"""
 
     try:
         # add waiter
         waiter = client.get_waiter(WAITERS[waiter_type])
         # wait until stack would be updated
-        waiter.wait(StackName=stackname)
+        waiter.wait(StackName=stack_name)
     except KeyError as error:
         logger.error("Key Error: {error_message}".format(error_message=error))
         exit(1)
@@ -216,28 +214,28 @@ def set_waiter(stackname, waiter_type):
         exit(1)
     else:
         logger.info("{operation} stack \"{stack}\": {status}".format(operation=waiter_type,
-                                                                     stack=stackname,
+                                                                     stack=stack_name,
                                                                      status=WAITERS[waiter_type]))
 
 
-def get_dict_of_lists_dependency(config):
+def get_dict_of_lists_dependency(read_config):
     """return dictionary of lists as value for each key in config file"""
 
-    dict_dependency = {key: [] for key in config.keys()}
-    for key, nested_values in config.items():
+    dict_dependency = {key: [] for key in read_config.keys()}
+    for key, nested_values in read_config.items():
         required_key_name = nested_values.get(KEY_REQUIRE)
         if required_key_name:
             dict_dependency[required_key_name].append(key)
     return dict_dependency
 
 
-def resolve_create_dependencies(config, stack_key):
+def resolve_create_dependencies(read_config, stack_key):
     """return list of stack dependencies chain for creating of assigned stack"""
 
     list_of_dependencies = [stack_key]
-    required_key_name = config[stack_key].get(KEY_REQUIRE)
+    required_key_name = read_config[stack_key].get(KEY_REQUIRE)
     if required_key_name:
-        list_of_dependencies = resolve_create_dependencies(config, required_key_name) + list_of_dependencies
+        list_of_dependencies = resolve_create_dependencies(read_config, required_key_name) + list_of_dependencies
     return list_of_dependencies
 
 
@@ -256,13 +254,13 @@ def create_stack(args):
     Finally, set waiter using function with constant action
     """
 
-    read_template = open_file(args.file)
-    validate_file(read_template)
     configfile = get_config(args.config)
-    full_list_dependecies = get_dict_of_lists_dependency(configfile)
-    list_create_dependency = resolve_create_dependencies(full_list_dependecies, args.stack_name)
+    list_create_dependency = resolve_create_dependencies(configfile, args.stack_name)
     for stack_key in list_create_dependency:
-        params = match_parameters(stack_key, read_template, args.config)
+        template_path = configfile[stack_key].get('template')
+        read_template = open_file(template_path)
+        validate_template(read_template)
+        params = match_parameters(stack_key, read_template, configfile)
         created_stack = client.create_stack(
             StackName=stack_key,
             TemplateBody=read_template,
@@ -272,7 +270,7 @@ def create_stack(args):
                 'CAPABILITY_NAMED_IAM',
             ]
         )
-        logger.debug("Update stack request: {request}".format(request=created_stack))
+        logger.debug("Create stack request: {request}".format(request=created_stack))
         set_waiter(stack_key, ACTION_CREATE)
 
 
@@ -282,13 +280,13 @@ def update_stack(args):
     Finally, set waiter using function with constant action
     """
 
-    read_template = open_file(args.file)
-    validate_file(read_template)
     configfile = get_config(args.config)
-    full_list_dependecies = get_dict_of_lists_dependency(configfile)
-    list_update_dependency = resolve_create_dependencies(full_list_dependecies, args.stack_name)
+    list_update_dependency = resolve_create_dependencies(configfile, args.stack_name)
     for stack_key in list_update_dependency:
-        params = match_parameters(stack_key, read_template, args.config)
+        template_path = configfile[stack_key].get('template')
+        read_template = open_file(template_path)
+        validate_template(read_template)
+        params = match_parameters(stack_key, read_template, configfile)
         updated_stack = client.update_stack(
             StackName=stack_key,
             TemplateBody=read_template,
