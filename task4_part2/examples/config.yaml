@@ -1,0 +1,21 @@
+Network:
+  name: NetworkStack
+  template: NetworkStack.json
+  require: ~
+  parameters: ~
+App1:
+  name: WebAppStack
+  template: WebAppStack.json
+  require: Network
+  parameters:
+     NetworkStackName: NetworkStack
+     InstanceName: WebApp1
+     SomeParameter: SomeValue
+App2:
+  name: WebAppStack
+  template: WebAppStack.json
+  require: Network
+  parameters:
+     NetworkStackName: NetworkStack
+     InstanceName: WebApp2
+     SomeParameter: SomeValue

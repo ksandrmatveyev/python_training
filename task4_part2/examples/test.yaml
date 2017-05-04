@@ -1,0 +1,31 @@
+Leviy:
+  name: Leviy
+  template: Leviy.json
+  require: App2
+  parameters: ~
+Main:
+  name: Main
+  template: Main.json
+  require: ~
+  parameters: ~
+Network:
+  name: NetworkStack
+  template: NetworkStack.json
+  require: Main
+  parameters: ~
+App1:
+  name: WebAppStack
+  template: WebAppStack.json
+  require: Network
+  parameters:
+     NetworkStackName: NetworkStack
+     InstanceName: WebApp1
+     SomeParameter: SomeValue
+App2:
+  name: WebAppStack1
+  template: WebAppStack1.json
+  require: Network
+  parameters:
+     NetworkStackName: NetworkStack
+     InstanceName: WebApp2
+     SomeParameter: SomeValue
