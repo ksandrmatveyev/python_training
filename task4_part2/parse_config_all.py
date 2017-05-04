@@ -37,6 +37,8 @@ if __name__ == "__main__":
     configfile = get_config(configpath)
     # print(configfile)
     stack = 'NetworkStack'
+    print(configfile[stack].get('name'))
+    print(configfile[stack].get('template'))
     dict_dependency = get_dict_of_lists_dependency(configfile)
     print(resolve_upto(dict_dependency, stack))
     create_list_order = resolve_dependencies(configfile, stack)

@@ -6,7 +6,7 @@ from operator import itemgetter
 client = boto3.client('cloudformation')
 template_path = 'WebAppStack.json'
 config_path = 'config.yaml'
-stack_key = 'App1'
+stack_key = 'WebAppStack'
 parameters_key = 'parameters'
 
 

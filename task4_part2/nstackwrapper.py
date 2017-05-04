@@ -26,6 +26,9 @@ WAITERS = {
 logger = logging.getLogger(__name__)
 client = boto3.client('cloudformation')
 
+# config file keys
+KEY_REQUIRE = "require"
+
 
 def get_args():
     """Parsing CLI commands using argparse with subparsers for common stack functions.
@@ -118,21 +121,21 @@ def open_file(file_name):
         return read_template
 
 
-def validate_file(read_file):
-    """validate cloudformation template file"""
+def validate_file(template_read):
+    """validate cloudformation template file, which was read previously"""
 
     validate_template = client.validate_template(
-        TemplateBody=read_file,
+        TemplateBody=template_read,
     )
 
 
-def get_template_params(read_file):
+def get_template_params(template_read):
     """return parameters from template file, which was read previously.
     Parameters are being writed as key-value pairs into list
     """
 
     template_valid = client.validate_template(
-        TemplateBody=read_file
+        TemplateBody=template_read
     )
     template_params = template_valid.get('Parameters')
     list_of_parameters = []
@@ -162,10 +165,10 @@ def get_config(configpath):
         return data
 
 
-def match_parameters(stack_key, template_path, config_path):
+def match_parameters(stack_key, template_read, config_path):
     """Matching parameters between template and config"""
 
-    template_params = get_template_params(open_file(template_path))
+    template_params = get_template_params(template_read)
     data = get_config(config_path)
     parameters_key = 'parameters'
     parameters_from_config = data.get(stack_key).get(parameters_key)
@@ -217,6 +220,36 @@ def set_waiter(stackname, waiter_type):
                                                                      status=WAITERS[waiter_type]))
 
 
+def get_dict_of_lists_dependency(config):
+    """return dictionary of lists as value for each key in config file"""
+
+    dict_dependency = {key: [] for key in config.keys()}
+    for key, nested_values in config.items():
+        required_key_name = nested_values.get(KEY_REQUIRE)
+        if required_key_name:
+            dict_dependency[required_key_name].append(key)
+    return dict_dependency
+
+
+def resolve_create_dependencies(config, stack_key):
+    """return list of stack dependencies chain for creating of assigned stack"""
+
+    list_of_dependencies = [stack_key]
+    required_key_name = config[stack_key].get(KEY_REQUIRE)
+    if required_key_name:
+        list_of_dependencies = resolve_create_dependencies(config, required_key_name) + list_of_dependencies
+    return list_of_dependencies
+
+
+def resolve_delete_dependencies(dependencies, stack_key):
+    """return list of stack dependencies chain for deleting of assigned stack"""
+
+    list_of_dependencies = [stack_key]
+    for dependency in dependencies[stack_key]:
+        list_of_dependencies = resolve_delete_dependencies(dependencies, dependency) + list_of_dependencies
+    return list_of_dependencies
+
+
 def create_stack(args):
     """Reads and validates cloudformation template file,
     Then creates aws cloudformation stack from this template.
@@ -225,18 +258,22 @@ def create_stack(args):
 
     read_template = open_file(args.file)
     validate_file(read_template)
-    params = match_parameters(args.stack_name, args.file, args.config)
-    created_stack = client.create_stack(
-        StackName=args.stack_name,
-        TemplateBody=read_template,
-        Parameters=params,
-        Capabilities=[
-            'CAPABILITY_IAM',
-            'CAPABILITY_NAMED_IAM',
-        ]
-    )
-    logger.debug("Create stack request: {request}".format(request=created_stack))
-    set_waiter(args.stack_name, ACTION_CREATE)
+    configfile = get_config(args.config)
+    full_list_dependecies = get_dict_of_lists_dependency(configfile)
+    list_create_dependency = resolve_create_dependencies(full_list_dependecies, args.stack_name)
+    for stack_key in list_create_dependency:
+        params = match_parameters(stack_key, read_template, args.config)
+        created_stack = client.create_stack(
+            StackName=stack_key,
+            TemplateBody=read_template,
+            Parameters=params,
+            Capabilities=[
+                'CAPABILITY_IAM',
+                'CAPABILITY_NAMED_IAM',
+            ]
+        )
+        logger.debug("Update stack request: {request}".format(request=created_stack))
+        set_waiter(stack_key, ACTION_CREATE)
 
 
 def update_stack(args):
@@ -247,18 +284,22 @@ def update_stack(args):
 
     read_template = open_file(args.file)
     validate_file(read_template)
-    params = match_parameters(args.stack_name, args.file, args.config)
-    updated_stack = client.update_stack(
-        StackName=args.stack_name,
-        TemplateBody=read_template,
-        Parameters=params,
-        Capabilities=[
-            'CAPABILITY_IAM',
-            'CAPABILITY_NAMED_IAM',
-        ]
-    )
-    logger.debug("Update stack request: {request}".format(request=updated_stack))
-    set_waiter(args.stack_name, ACTION_UPDATE)
+    configfile = get_config(args.config)
+    full_list_dependecies = get_dict_of_lists_dependency(configfile)
+    list_update_dependency = resolve_create_dependencies(full_list_dependecies, args.stack_name)
+    for stack_key in list_update_dependency:
+        params = match_parameters(stack_key, read_template, args.config)
+        updated_stack = client.update_stack(
+            StackName=stack_key,
+            TemplateBody=read_template,
+            Parameters=params,
+            Capabilities=[
+                'CAPABILITY_IAM',
+                'CAPABILITY_NAMED_IAM',
+            ]
+        )
+        logger.debug("Update stack request: {request}".format(request=updated_stack))
+        set_waiter(stack_key, ACTION_UPDATE)
 
 
 def delete_stack(args):
@@ -267,12 +308,16 @@ def delete_stack(args):
     Finally, set waiter using function with constant action
     """
 
-    stack_exists(args.stack_name)
-    deleted_stack = client.delete_stack(
-        StackName=args.stack_name,
-    )
-    logger.debug("Delete stack request: {request}".format(request=deleted_stack))
-    set_waiter(args.stack_name, ACTION_DELETE)
+    configfile = get_config(args.config)
+    full_list_dependecies = get_dict_of_lists_dependency(configfile)
+    list_delete_dependency = resolve_delete_dependencies(full_list_dependecies, args.stack_name)
+    for stack_key in list_delete_dependency:
+        stack_exists(stack_key)
+        deleted_stack = client.delete_stack(
+            StackName=stack_key,
+        )
+        logger.debug("Delete stack request: {request}".format(request=deleted_stack))
+        set_waiter(stack_key, ACTION_DELETE)
 
 
 def main():
