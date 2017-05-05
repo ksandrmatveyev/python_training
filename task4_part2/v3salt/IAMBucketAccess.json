@@ -1,0 +1,263 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "AWS Task2. Create one IAM role for accesing to s3 bucket for deploment and another IAM role for accesing to s3 bucket for content",
+  "Parameters": {
+    "s3bucketDeployment": {
+      "Type": "String",
+      "Default": "manual-private-bucket",
+      "Description": "Name of deployment s3bucket. Default is manual-private-bucket"
+    },
+    "s3bucketContent": {
+      "Type": "String",
+      "Default": "content-private-bucket",
+      "Description": "Name of content s3bucket. Default is static-private-bucket"
+    }
+  },
+  "Resources": {
+    "InstRoleDeploy": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "ec2.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Path": "/"
+      }
+    },
+    "RolePoliciesDeploy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "s3deploypolicy",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:ListAllMyBuckets"
+              ],
+              "Resource": "arn:aws:s3:::*"
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:ListBucket",
+                "s3:GetBucketLocation"
+              ],
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:s3:::",
+                      {
+                        "Ref": "s3bucketDeployment"
+                      }
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:DeleteObject"
+              ],
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:s3:::",
+                      {
+                        "Ref": "s3bucketDeployment"
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "InstRoleDeploy"
+          },
+          {
+            "Ref": "InstRoleContent"
+          }
+        ]
+      }
+    },
+    "InstanceS3DeployProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [
+          {
+            "Ref": "InstRoleDeploy"
+          }
+        ]
+      }
+    },
+    "InstRoleContent": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "ec2.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Path": "/"
+      }
+    },
+    "RolePoliciesContent": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "s3contentpolicy",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:ListAllMyBuckets"
+              ],
+              "Resource": "arn:aws:s3:::*"
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:ListBucket",
+                "s3:GetBucketLocation"
+              ],
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:s3:::",
+                      {
+                        "Ref": "s3bucketContent"
+                      }
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:DeleteObject"
+              ],
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:s3:::",
+                      {
+                        "Ref": "s3bucketContent"
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "InstRoleContent"
+          }
+        ]
+      }
+    },
+    "InstanceS3ContentProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [
+          {
+            "Ref": "InstRoleContent"
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "InstanceS3DeployProfile": {
+      "Description": "Instance Profile for accessing to s3bucketDeployment",
+      "Value": {
+        "Ref": "InstanceS3DeployProfile"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-InstanceS3DeployProfile"
+        }
+      }
+    },
+    "s3bucketContentProfile": {
+      "Description": "Instance Profile for accessing to s3bucketContent",
+      "Value": {
+        "Ref": "InstanceS3ContentProfile"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-InstanceS3ContentProfile"
+        }
+      }
+    },
+    "s3bucketDeployment": {
+      "Description": "s3 bucket for configuration deployment",
+      "Value": {
+        "Ref": "s3bucketDeployment"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-s3bucketDeployment"
+        }
+      }
+    },
+    "s3bucketContent": {
+      "Description": "s3 bucket for static content",
+      "Value": {
+        "Ref": "s3bucketContent"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-s3bucketContent"
+        }
+      }
+    }
+  }
+}

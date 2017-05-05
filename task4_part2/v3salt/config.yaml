@@ -1,0 +1,38 @@
+NetworkStack:
+  name: NetworkStack
+  template: NetworkStack.json
+  require: ~
+  parameters: ~
+IAMBucketAccess:
+  name: IAMBucketAccess
+  template: IAMBucketAccess.json
+  require: NetworkStack
+  parameters:
+    s3bucketDeployment: manual-private-bucket
+    s3bucketContent: content-private-bucket
+MasterStack:
+  name: MasterStack
+  template: MasterStack.json
+  require: IAMBucketAccess
+  parameters:
+     NetworkStackName: NetworkStack
+     IAMStackName: IAMBucketAccess
+     GitRepo: ksandrmatveyev/aws_training.git
+     GitBranch: task2states
+AppStack:
+  name: AppStack
+  template: AppStack.json
+  require: MasterStack
+  parameters:
+     NetworkStackName: NetworkStack
+     IAMStackName: IAMBucketAccess
+     MastertackName: MasterStack
+WebStack:
+  name: WebStack
+  template: WebStack.json
+  require: AppStack
+  parameters:
+     NetworkStackName: NetworkStack
+     IAMStackName: IAMBucketAccess
+     MastertackName: MasterStack
+     AppStackName: AppStack

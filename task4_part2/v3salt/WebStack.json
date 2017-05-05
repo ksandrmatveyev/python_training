@@ -1,0 +1,121 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "AWS Task2. Stack for deploying salt-minions with webserver role",
+  "Parameters": {
+    "NetworkStackName": {
+      "Description": "Name of an active CloudFormation stack that contains the networking resources, such as the subnet and security group, that will be used in this stack.",
+      "Type": "String",
+      "MinLength": 1,
+      "MaxLength": 255,
+      "AllowedPattern": "^[a-zA-Z][-a-zA-Z0-9]*$",
+      "Default": "NetworkStack"
+    },
+    "MasterStackName": {
+      "Description": "Name of an active CloudFormation stack that contains the Salt-master instance and its local IP, that will be used in this stack.",
+      "Type": "String",
+      "MinLength": 1,
+      "MaxLength": 255,
+      "AllowedPattern": "^[a-zA-Z][-a-zA-Z0-9]*$",
+      "Default": "MasterStack"
+    },
+    "IAMStackName": {
+      "Description": "Name of an active CloudFormation stack that contains the IAM instance profiles with roles and policies, that will be used in this stack.",
+      "Type": "String",
+      "MinLength": 1,
+      "MaxLength": 255,
+      "AllowedPattern": "^[a-zA-Z][-a-zA-Z0-9]*$",
+      "Default": "IAMBucketAccess"
+    },
+    "AppStackName": {
+      "Description": "Name of an active CloudFormation stack that contains minions as application instances and their local IPs, that will be used in this stack.",
+      "Type": "String",
+      "MinLength": 1,
+      "MaxLength": 255,
+      "AllowedPattern": "^[a-zA-Z][-a-zA-Z0-9]*$",
+      "Default": "AppStack"
+    }
+  },
+  "Resources": {
+    "Webminion01": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "ImageId": "ami-49c9295f",
+        "KeyName": "awskeytest",
+        "InstanceType": "t2.micro",
+        "NetworkInterfaces": [
+          {
+            "GroupSet": [
+              {
+                "Fn::ImportValue": {
+                  "Fn::Sub": "${NetworkStackName}-SecurityGroupID"
+                }
+              }
+            ],
+            "AssociatePublicIpAddress": "true",
+            "DeviceIndex": "0",
+            "DeleteOnTermination": "true",
+            "SubnetId": {
+              "Fn::ImportValue": {
+                "Fn::Sub": "${NetworkStackName}-SubnetID"
+              }
+            }
+          }
+        ],
+        "IamInstanceProfile": {
+            "Fn::ImportValue": {
+              "Fn::Sub": "${IAMStackName}-InstanceS3ContentProfile"
+            }
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "WEB"
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash\n",
+                "\n",
+                "curl -O https://bootstrap.pypa.io/get-pip.py && python get-pip.py && pip install awscli\n",
+                "curl -L https://bootstrap.saltstack.com -o install_salt.sh && sh install_salt.sh -P\n",
+                "service salt-minion stop\n",
+                "sed -i 's/#master: salt/master: ",
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "${MasterStackName}-SaltmasterIP"
+                  }
+                },
+                "/' /etc/salt/minion\n",
+                "echo 'verify_master_pubkey_sign: True' >> /etc/salt/minion\n",
+                "aws s3 cp s3://",
+                {
+                  "Fn::ImportValue" : {"Fn::Sub": "${IAMStackName}-s3bucketDeployment" }
+                },
+                "/keys/master/master_sign.pub /etc/salt/pki/minion/\n",
+                "echo 'roles: webserver' > /etc/salt/grains\n",
+                "echo 'app1: ",
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "${AppStackName}-APP1IP"
+                  }
+                },
+                "' >> /etc/salt/grains\n",
+                "echo 'app2: ",
+                {
+                  "Fn::ImportValue": {
+                    "Fn::Sub": "${AppStackName}-APP2IP"
+                  }
+                },
+                "' >> /etc/salt/grains\n",
+                "service salt-minion start\n"
+              ]
+            ]
+          }
+        }
+      }
+    }
+  }
+}
