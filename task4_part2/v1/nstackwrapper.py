@@ -129,14 +129,13 @@ def open_file(file_path):
 
 def get_template_params(read_template):
     """return parameters from template file, which was read previously.
-    Parameters are being written  into list as key-value pairs.
-    If no DefaultValue for parameter, set None (using get())
+    Parameters are being writed as key-value pairs into list
     """
 
     valid_template = client.validate_template(
         TemplateBody=read_template
     )
-    logger.info("Template is valid")
+    logger.debug("Template is valid: {response}".format(response=valid_template))
     template_params = valid_template.get('Parameters')
     list_of_parameters = []
     for oldkey in template_params:
@@ -149,8 +148,8 @@ def get_template_params(read_template):
                                 key=itemgetter('ParameterKey',
                                                'ParameterValue'))
 
+    logger.info("Template is valid")
     logger.debug("Template has parameters: {params}".format(params=list_of_parameters))
-    logger.info('Template parameters were parsed')
     return list_of_parameters
 
 
@@ -171,30 +170,30 @@ def get_config(config_path):
 
 
 def match_parameters(stack_key, template_read, read_config):
-    """Matching parameters between template and config.
-    Value always is got from config file (default value is ignored)
-    """
+    """Matching parameters between template and config"""
 
-    try:
-        template_params = get_template_params(template_read)
-        parameters_key = 'parameters'
-        parameters_from_config = read_config.get(stack_key).get(parameters_key)
-        resolved_parameters = []
-        for item in template_params:
-            if item["ParameterKey"] in parameters_from_config:
-                value = parameters_from_config[item["ParameterKey"]]
-                parameter = {
-                    "ParameterKey": item["ParameterKey"],
-                    "ParameterValue": value
-                }
-                resolved_parameters.append(parameter)
-    except KeyError as error:
-        logger.error("Key \"{key}\" not found in config file".format(key=error))
-        exit(1)
-    else:
-        logger.debug('Matched parameters: {params}'.format(params=resolved_parameters))
-        logger.info('Parameters were matched successfully')
-        return resolved_parameters
+    template_params = get_template_params(template_read)
+    parameters_key = 'parameters'
+    parameters_from_config = read_config.get(stack_key).get(parameters_key)
+    resolved_parameters = []
+    for item in template_params:
+        print(item)
+        value = None
+        if item["ParameterKey"] in parameters_from_config:
+            value = parameters_from_config[item["ParameterKey"]]
+        elif item["ParameterValue"]:
+            value = item["ParameterValue"]
+        else:
+            logger.debug("{key} not found or hasn't default value".format(key=item["ParameterKey"]))
+        if value:
+            parameter = {
+                "ParameterKey": item["ParameterKey"],
+                "ParameterValue": value
+            }
+            resolved_parameters.append(parameter)
+    logger.debug('Parameters were matched. Parameters: {params}'.format(params=resolved_parameters))
+    logger.info('Parameters were matched')
+    return resolved_parameters
 
 
 def stack_exists(stack_name):
@@ -239,7 +238,6 @@ def get_dict_of_lists_dependency(read_config):
         required_key_name = nested_values.get(KEY_REQUIRE)
         if required_key_name:
             dict_dependency[required_key_name].append(key)
-    logger.debug('All dependencies: {dict}'.format(dict=dict_dependency))
     return dict_dependency
 
 
@@ -250,9 +248,6 @@ def resolve_create_dependencies(read_config, stack_key):
     required_key_name = read_config[stack_key].get(KEY_REQUIRE)
     if required_key_name:
         list_of_dependencies = resolve_create_dependencies(read_config, required_key_name) + list_of_dependencies
-    logger.debug('List dependency for creating of stack \"{stack}\": {list_create}'.format(
-                                                                                    list_create=list_of_dependencies,
-                                                                                    stack=stack_key))
     return list_of_dependencies
 
 
@@ -262,9 +257,6 @@ def resolve_delete_dependencies(dict_dependency, stack_key):
     list_of_dependencies = [stack_key]
     for dependency in dict_dependency[stack_key]:
         list_of_dependencies = resolve_delete_dependencies(dict_dependency, dependency) + list_of_dependencies
-    logger.debug('List dependency for deleting of stack \"{stack}\": {list_create}'.format(
-                                                                                    list_create=list_of_dependencies,
-                                                                                    stack=stack_key))
     return list_of_dependencies
 
 

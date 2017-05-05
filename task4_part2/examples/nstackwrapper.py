@@ -114,17 +114,17 @@ def open_file(file_path):
         logger.error("I/O Error: {error_message}".format(error_message=error))
         exit(1)
     else:
-        logger.info("Template \"{file}\" is valid".format(file=file_path))
+        logger.info("Template \"{file}\" was read".format(file=file_path))
         template_opened.close()
         return read_template
 
 
-def validate_template(read_template):
-    """validate cloudformation template file, which was read previously"""
-
-    validate_template = client.validate_template(
-        TemplateBody=read_template,
-    )
+# def validate_template(read_template):
+#     """validate cloudformation template file, which was read previously"""
+#
+#     validate_template = client.validate_template(
+#         TemplateBody=read_template,
+#     )
 
 
 def get_template_params(read_template):
@@ -135,6 +135,7 @@ def get_template_params(read_template):
     valid_template = client.validate_template(
         TemplateBody=read_template
     )
+    logger.info("Template is valid")
     template_params = valid_template.get('Parameters')
     list_of_parameters = []
     for oldkey in template_params:
@@ -146,11 +147,16 @@ def get_template_params(read_template):
     list_of_parameters = sorted(list_of_parameters,
                                 key=itemgetter('ParameterKey',
                                                'ParameterValue'))
+
+    logger.debug("Template has parameters: {params}".format(params=list_of_parameters))
+    logger.info('Template parameters were parsed')
     return list_of_parameters
 
 
 def get_config(config_path):
-    """try return all data from yaml config file"""
+    """try open and read yaml config file.
+    Return read config, if no exception
+    """
 
     try:
         with open(config_path, 'r') as file_descriptor:
@@ -167,35 +173,40 @@ def match_parameters(stack_key, template_read, read_config):
     """Matching parameters between template and config"""
 
     template_params = get_template_params(template_read)
-    # data = get_config(config_path)
     parameters_key = 'parameters'
     parameters_from_config = read_config.get(stack_key).get(parameters_key)
     resolved_parameters = []
     for item in template_params:
-        print(item)
         value = None
         if item["ParameterKey"] in parameters_from_config:
             value = parameters_from_config[item["ParameterKey"]]
         elif item["ParameterValue"]:
-            value = item["ParameterValue"]
+            value = parameters_from_config[item["ParameterValue"]]
         else:
-            print("{key} not found and hasn't default value".format(key=item["ParameterKey"]))
+            logger.error("{key} not found or hasn't default value".format(key=item["ParameterKey"]))
         if value:
             parameter = {
                 "ParameterKey": item["ParameterKey"],
                 "ParameterValue": value
             }
             resolved_parameters.append(parameter)
+    logger.debug('Parameters were matched. Parameters: {params}'.format(params=resolved_parameters))
+    logger.info('Parameters were matched')
     return resolved_parameters
 
 
 def stack_exists(stack_name):
     """Check if stack exists"""
-
-    stack_exists = client.describe_stacks(
-        StackName=stack_name
-    )
-    logger.info("Stack \"{stack}\" exists".format(stack=stack_name))
+    try:
+        stack_exists = client.describe_stacks(
+            StackName=stack_name
+        )
+    except (BotoCoreError, ClientError):
+        logger.info("Stack \"{stack}\" doesn't exist".format(stack=stack_name))
+        return False
+    else:
+        logger.info("Stack \"{stack}\" already exists".format(stack=stack_name))
+        return True
 
 
 def set_waiter(stack_name, waiter_type):
@@ -226,6 +237,7 @@ def get_dict_of_lists_dependency(read_config):
         required_key_name = nested_values.get(KEY_REQUIRE)
         if required_key_name:
             dict_dependency[required_key_name].append(key)
+    logger.debug('All dependencies: {dict}'.format(dict=dict_dependency))
     return dict_dependency
 
 
@@ -236,15 +248,21 @@ def resolve_create_dependencies(read_config, stack_key):
     required_key_name = read_config[stack_key].get(KEY_REQUIRE)
     if required_key_name:
         list_of_dependencies = resolve_create_dependencies(read_config, required_key_name) + list_of_dependencies
+    logger.debug('List dependency for creating of stack \"{stack}\": {list_create}'.format(
+                                                                                    list_create=list_of_dependencies,
+                                                                                    stack=stack_key))
     return list_of_dependencies
 
 
-def resolve_delete_dependencies(dependencies, stack_key):
+def resolve_delete_dependencies(dict_dependency, stack_key):
     """return list of stack dependencies chain for deleting of assigned stack"""
 
     list_of_dependencies = [stack_key]
-    for dependency in dependencies[stack_key]:
-        list_of_dependencies = resolve_delete_dependencies(dependencies, dependency) + list_of_dependencies
+    for dependency in dict_dependency[stack_key]:
+        list_of_dependencies = resolve_delete_dependencies(dict_dependency, dependency) + list_of_dependencies
+    logger.debug('List dependency for deleting of stack \"{stack}\": {list_create}'.format(
+                                                                                    list_create=list_of_dependencies,
+                                                                                    stack=stack_key))
     return list_of_dependencies
 
 
@@ -259,8 +277,9 @@ def create_stack(args):
     for stack_key in list_create_dependency:
         template_path = configfile[stack_key].get('template')
         read_template = open_file(template_path)
-        validate_template(read_template)
         params = match_parameters(stack_key, read_template, configfile)
+        if stack_exists(stack_key):
+            continue
         created_stack = client.create_stack(
             StackName=stack_key,
             TemplateBody=read_template,
@@ -285,19 +304,19 @@ def update_stack(args):
     for stack_key in list_update_dependency:
         template_path = configfile[stack_key].get('template')
         read_template = open_file(template_path)
-        validate_template(read_template)
         params = match_parameters(stack_key, read_template, configfile)
-        updated_stack = client.update_stack(
-            StackName=stack_key,
-            TemplateBody=read_template,
-            Parameters=params,
-            Capabilities=[
-                'CAPABILITY_IAM',
-                'CAPABILITY_NAMED_IAM',
-            ]
-        )
-        logger.debug("Update stack request: {request}".format(request=updated_stack))
-        set_waiter(stack_key, ACTION_UPDATE)
+        if stack_exists(stack_key):
+            updated_stack = client.update_stack(
+                StackName=stack_key,
+                TemplateBody=read_template,
+                Parameters=params,
+                Capabilities=[
+                    'CAPABILITY_IAM',
+                    'CAPABILITY_NAMED_IAM',
+                ]
+            )
+            logger.debug("Update stack request: {request}".format(request=updated_stack))
+            set_waiter(stack_key, ACTION_UPDATE)
 
 
 def delete_stack(args):
@@ -310,12 +329,12 @@ def delete_stack(args):
     full_list_dependecies = get_dict_of_lists_dependency(configfile)
     list_delete_dependency = resolve_delete_dependencies(full_list_dependecies, args.stack_name)
     for stack_key in list_delete_dependency:
-        stack_exists(stack_key)
-        deleted_stack = client.delete_stack(
-            StackName=stack_key,
-        )
-        logger.debug("Delete stack request: {request}".format(request=deleted_stack))
-        set_waiter(stack_key, ACTION_DELETE)
+        if stack_exists(stack_key):
+            deleted_stack = client.delete_stack(
+                StackName=stack_key,
+            )
+            logger.debug("Delete stack request: {request}".format(request=deleted_stack))
+            set_waiter(stack_key, ACTION_DELETE)
 
 
 def main():
@@ -334,7 +353,7 @@ def main():
                         datefmt=DATEFORMAT)
     try:
         args.func(args)
-    except (BotoCoreError, ClientError) as error:
+    except (BotoCoreError, ClientError, KeyError) as error:
         logger.error("Error: {error_message}".format(error_message=error))
         exit(1)
 

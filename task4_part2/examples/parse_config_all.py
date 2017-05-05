@@ -3,7 +3,7 @@ import boto3
 import yaml
 from collections import namedtuple
 
-configpath = 'test.yaml'
+configpath = 'config.yaml'
 KEY_REQUIRE = "require"
 
 
@@ -36,8 +36,10 @@ def resolve_upto(dependencies, stack_key):
 if __name__ == "__main__":
     configfile = get_config(configpath)
     # print(configfile)
-    stack = 'Main'
+    stack = 'NetworkStack'
+    print(configfile[stack].get('name'))
+    print(configfile[stack].get('template'))
     dict_dependency = get_dict_of_lists_dependency(configfile)
     print(resolve_upto(dict_dependency, stack))
-    #create_list_order = resolve_dependencies(configfile, stack)
-    #print(create_list_order)
+    create_list_order = resolve_dependencies(configfile, stack)
+    print(create_list_order)

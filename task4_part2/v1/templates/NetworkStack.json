@@ -84,19 +84,6 @@
           "CidrIp" : "0.0.0.0/0"
         } ]
       }
-    },
-    "WebServerSecurityGroup2" : {
-      "Type" : "AWS::EC2::SecurityGroup",
-      "Properties" : {
-        "GroupDescription" : "Enable HTTPS ingress",
-        "VpcId" : { "Ref" : "VPC" },
-        "SecurityGroupIngress" : [ {
-          "IpProtocol" : "tcp",
-          "FromPort" : "443",
-          "ToPort" : "443",
-          "CidrIp" : "0.0.0.0/0"
-        } ]
-      }
     }
   },
   "Outputs" : {

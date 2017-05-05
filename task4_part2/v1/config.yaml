@@ -1,0 +1,14 @@
+NetworkStack:
+  name: NetworkStack
+  template: templates/NetworkStack.json
+  require: ~
+  parameters:
+    VPCName: myVPC
+WebAppStack:
+  name: WebAppStack
+  template: templates/WebAppStack.json
+  require: NetworkStack
+  parameters:
+     NetworkStackName: NetworkStack
+     InstanceName: WebApp
+     SomeParameter: SomeValue
