@@ -8,7 +8,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError, WaiterConfigError, WaiterError
 
 
-# for loging configuration
+# for logging configuration
 LOGFORMAT = '%(asctime)s | %(levelname)s | %(funcName)s | %(message)s'
 DATEFORMAT = '%m/%d/%Y %I:%M:%S %p'
 
@@ -119,14 +119,6 @@ def open_file(file_path):
         return read_template
 
 
-# def validate_template(read_template):
-#     """validate cloudformation template file, which was read previously"""
-#
-#     validate_template = client.validate_template(
-#         TemplateBody=read_template,
-#     )
-
-
 def get_template_params(read_template):
     """return parameters from template file, which was read previously.
     Parameters are being written  into list as key-value pairs.
@@ -150,7 +142,7 @@ def get_template_params(read_template):
                                                'ParameterValue'))
 
     logger.debug("Template has parameters: {params}".format(params=list_of_parameters))
-    logger.info('Template parameters were parsed')
+    logger.info('Template parameters were parsed successfully')
     return list_of_parameters
 
 
