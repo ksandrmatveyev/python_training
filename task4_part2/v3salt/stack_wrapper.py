@@ -94,6 +94,25 @@ def get_args():
                                default=None,
                                help='write log to file')
     parser_delete.set_defaults(func=delete_stack)
+
+    # Validate stacks parser
+    parser_validate = subparsers.add_parser('validate-stacks', help='validate stack')
+    parser_validate.add_argument('--config',
+                                 required=False,
+                                 default='config.yaml',
+                                 help='set path to config file')
+    parser_validate.add_argument('--log',
+                                 type=str,
+                                 default='INFO',
+                                 choices=['INFO', 'DEBUG', 'ERROR'],
+                                 required=False,
+                                 help='which log level. DEBUG, INFO, ERROR')
+    parser_validate.add_argument('--logfile',
+                                 required=False,
+                                 default=None,
+                                 help='write log to file')
+    parser_validate.set_defaults(func=validate_stack)
+
     # if no arguments, show help
     if len(argv) == 1:
         parser.print_help()
@@ -117,6 +136,18 @@ def open_file(file_path):
         logger.info("Template \"{file}\" was read".format(file=file_path))
         template_opened.close()
         return read_template
+
+
+def get_template_capabilities(read_template):
+    """return capabilities"""
+
+    valid_template = client.validate_template(
+        TemplateBody=read_template
+    )
+    template_capabilities = []
+    if valid_template.get('Capabilities'):
+        template_capabilities = valid_template.get('Capabilities')
+    return template_capabilities
 
 
 def get_template_params(read_template):
@@ -272,16 +303,14 @@ def create_stack(args):
         template_path = configfile[stack_key].get('template')
         read_template = open_file(template_path)
         params = match_parameters(stack_key, read_template, configfile)
+        capabils = get_template_capabilities(read_template)
         if stack_exists(stack_key):
             continue
         created_stack = client.create_stack(
             StackName=stack_key,
             TemplateBody=read_template,
             Parameters=params,
-            Capabilities=[
-                'CAPABILITY_IAM',
-                'CAPABILITY_NAMED_IAM',
-            ]
+            Capabilities=capabils
         )
         logger.debug("Create stack request: {request}".format(request=created_stack))
         set_waiter(stack_key, ACTION_CREATE)
@@ -299,15 +328,13 @@ def update_stack(args):
         template_path = configfile[stack_key].get('template')
         read_template = open_file(template_path)
         params = match_parameters(stack_key, read_template, configfile)
+        capabils = get_template_capabilities(read_template)
         if stack_exists(stack_key):
             updated_stack = client.update_stack(
                 StackName=stack_key,
                 TemplateBody=read_template,
                 Parameters=params,
-                Capabilities=[
-                    'CAPABILITY_IAM',
-                    'CAPABILITY_NAMED_IAM',
-                ]
+                Capabilities=capabils
             )
             logger.debug("Update stack request: {request}".format(request=updated_stack))
             set_waiter(stack_key, ACTION_UPDATE)
@@ -329,6 +356,26 @@ def delete_stack(args):
             )
             logger.debug("Delete stack request: {request}".format(request=deleted_stack))
             set_waiter(stack_key, ACTION_DELETE)
+
+
+def validate_stack(args):
+    """Show status of stacks from config file"""
+
+    configfile = get_config(args.config)
+    stack_list = list(configfile.keys())
+    for stack_key in stack_list:
+        try:
+            stack_exists = client.describe_stacks(StackName=stack_key)
+        except (BotoCoreError, ClientError):
+            logger.error("Stack \"{stack}\" doesn't exist".format(stack=stack_key))
+        else:
+            for i in stack_exists['Stacks']:
+                logger.info("Stack \"{stack}\" has status \"{status}\"".format(stack=i.get('StackName'),
+                                                                               status=i.get('StackStatus')))
+                logger.debug("Stack \"{stack}\" has status"
+                             " \"{status}\" with reason: {reason}".format(stack=i.get('StackName'),
+                                                                          status=i.get('StackStatus'),
+                                                                          reason=i.get('StackStatusReason')))
 
 
 def main():
