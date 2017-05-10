@@ -26,7 +26,7 @@ AppStack:
   parameters:
      NetworkStackName: NetworkStack
      IAMStackName: IAMBucketAccess
-     MastertackName: MasterStack
+     MasterStackName: MasterStack
 WebStack:
   name: WebStack
   template: WebStack.json

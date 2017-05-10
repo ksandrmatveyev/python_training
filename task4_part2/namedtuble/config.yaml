@@ -1,0 +1,14 @@
+NetworkStack:
+  name: NetworkStack
+  template: NetworkStack.json
+  require: ~
+  parameters: ~
+IAMBucketAccess:
+  name: IAMBucketAccess
+  template: IAMBucketAccess.json
+  require: NetworkStack
+  parameters:
+    s3bucketDeployment: manual-private-bucket
+    s3bucketContent: content-private-bucket
+  capabilities:
+    - CAPABILITY_IAM

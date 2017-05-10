@@ -7,8 +7,7 @@
       "Type": "String",
       "MinLength" : 1,
       "MaxLength" : 255,
-      "AllowedPattern" : "^[a-zA-Z][-a-zA-Z0-9]*$",
-      "Default" : "NetworkStack"
+      "AllowedPattern" : "^[a-zA-Z][-a-zA-Z0-9]*$"
     },
     "IAMStackName": {
       "Description": "Name of an active CloudFormation stack that contains the IAM instance profiles with roles and policies, that will be used in this stack.",

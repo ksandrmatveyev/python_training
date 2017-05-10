@@ -3,6 +3,7 @@ from sys import exit, argv
 import logging
 import argparse
 from operator import itemgetter
+from collections import namedtuple
 import yaml
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError, WaiterConfigError, WaiterError
@@ -70,29 +71,29 @@ def get_template_capabilities(read_template):
     return template_capabilities
 
 
-# templ = open_file('IAMBucketAccess.json')
-# templ_cap = get_template_capabilities(templ)
-# templ_params = get_template_params(templ)
-# print(templ_cap)
-# print(templ_params)
+templ = open_file('IAMBucketAccess.json')
+templ_cap = get_template_capabilities(templ)
+templ_params = get_template_params(templ)
+print(templ_cap)
+print(templ_params)
 
 
-def create_stack(stack, template, capabilities):
-    """Reads and validates cloudformation template file,
-    Then creates aws cloudformation stack from this template.
-    Finally, set waiter using function with constant action
-    """
-
-    created_stack = client.create_stack(
-        StackName=stack,
-        TemplateBody=template,
-        Capabilities=capabilities
-    )
-
-create_networkstack = open_file('NetworkStack.json')
-templ_cap1 = get_template_capabilities(create_networkstack)
-
-create_stack('NetworkStack', create_networkstack, templ_cap1)
+# def create_stack(stack, template, capabilities):
+#     """Reads and validates cloudformation template file,
+#     Then creates aws cloudformation stack from this template.
+#     Finally, set waiter using function with constant action
+#     """
+#
+#     created_stack = client.create_stack(
+#         StackName=stack,
+#         TemplateBody=template,
+#         Capabilities=capabilities
+#     )
+#
+# create_networkstack = open_file('NetworkStack.json')
+# templ_cap1 = get_template_capabilities(create_networkstack)
+#
+# create_stack('NetworkStack', create_networkstack, templ_cap1)
 
 
 
