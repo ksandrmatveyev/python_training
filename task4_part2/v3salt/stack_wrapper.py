@@ -212,7 +212,7 @@ def get_config(config_path):
         return config_body
 
 
-def match_parameters(stack_key, template_body, config_body):
+def match_parameters(stack_key, valid_template, config_body):
     """Matching parameters between template and config.
     Value always is got from config file (default value is ignored)
     """
@@ -221,7 +221,7 @@ def match_parameters(stack_key, template_body, config_body):
     missed_parameters = False
     parameters_key = 'parameters'
     parameters_from_config = config_body.get(stack_key).get(parameters_key)
-    for item in get_template_params(template_body):
+    for item in get_template_params(valid_template):
         try:
             parameter = {
                 "ParameterKey": item["ParameterKey"],
